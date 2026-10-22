@@ -1,0 +1,8 @@
+openai
+qdrant-client
+streamlit
+pypdf
+numpy
+python-dotenv
+pytest
+reportlab

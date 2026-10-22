@@ -1,0 +1,37 @@
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment variables and credentials
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Python artifacts
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Private documents
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Local Qdrant database
+storage/qdrant/*
+!storage/qdrant/.gitkeep
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
