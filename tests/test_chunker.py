@@ -65,3 +65,47 @@ def test_invalid_page_number_raises_error():
             source="cv.pdf",
             page_number=0,
         )
+
+
+def test_chunks_never_exceed_max_words():
+    text = " ".join(f"word{i}" for i in range(250))
+
+    chunks = chunk_page(
+        text=text,
+        document_id="doc_example",
+        source="cv.pdf",
+        page_number=1,
+        max_words=100,
+        overlap=20,
+    )
+
+    assert all(len(chunk["text"].split()) <= 100 for chunk in chunks)
+
+
+def test_all_words_are_preserved_in_order():
+    words = [f"word{i}" for i in range(250)]
+
+    chunks = chunk_page(
+        text=" ".join(words),
+        document_id="doc_example",
+        source="cv.pdf",
+        page_number=1,
+        max_words=100,
+        overlap=20,
+    )
+
+    step = 80
+
+    for index, chunk in enumerate(chunks):
+        start = index * step
+        expected_chunk = words[start : start + 100]
+
+        assert chunk["text"].split() == expected_chunk
+
+    # Confirm every original word is covered by the chunks.
+    covered_words = set()
+
+    for chunk in chunks:
+        covered_words.update(chunk["text"].split())
+
+    assert covered_words == set(words)
