@@ -1,6 +1,6 @@
 
 from unittest.mock import Mock
-
+import pytest
 from eddie_twin.rag.query_pipeline import QueryPipeline
 from eddie_twin.security.audit import SecurityAudit
 from eddie_twin.security.defense import SecurityDefense
@@ -100,3 +100,50 @@ def test_custom_top_k_is_preserved():
         query="Summarize my CV.",
         top_k=3,
     )
+# 
+def test_invalid_input_is_rejected_before_retrieval():
+    pipeline, retriever, generator, _ = make_pipeline()
+
+    with pytest.raises(ValueError):
+        pipeline.query("   ")
+
+    retriever.retrieve.assert_not_called()
+    generator.generate.assert_not_called()
+
+
+def test_oversized_input_is_rejected_before_retrieval():
+    pipeline, retriever, generator, _ = make_pipeline()
+
+    with pytest.raises(ValueError, match="maximum length"):
+        pipeline.query("a" * 8001)
+
+    retriever.retrieve.assert_not_called()
+    generator.generate.assert_not_called()
+
+
+def test_unsafe_output_does_not_return_original_sources_or_chunks():
+    secret = "sk-" + ("A" * 25)
+    pipeline, retriever, _, _ = make_pipeline(
+        answer=f"Leaked key: {secret}"
+    )
+
+    result = pipeline.query("Summarize my CV.")
+
+    assert result["security"]["blocked"] is True
+    assert result["sources"] == []
+    assert result["retrieved_chunks"] == []
+    assert secret not in str(result)
+
+
+def test_audit_does_not_store_raw_prompt_or_generated_answer():
+    pipeline, _, _, audit = make_pipeline()
+
+    prompt = "Summarize my CV using Python."
+    answer = "Your CV lists Python."
+
+    pipeline.query(prompt)
+
+    report_text = str(audit.report())
+
+    assert prompt not in report_text
+    assert answer not in report_text

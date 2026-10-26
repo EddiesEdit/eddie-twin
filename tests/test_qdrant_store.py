@@ -1,6 +1,6 @@
 
 import pytest
-
+import math
 from eddie_twin.vectorstores.qdrant_store import QdrantVectorStore
 
 
@@ -79,3 +79,19 @@ def test_chunk_ids_produce_deterministic_point_ids():
     second = QdrantVectorStore._point_id("doc_test:page-1:chunk-0")
 
     assert first == second
+
+@pytest.mark.parametrize("invalid_value", [math.nan, math.inf, -math.inf])
+def test_upsert_rejects_non_finite_vector_values(store, invalid_value):
+    chunks = [make_chunk("chunk_invalid", "Example text.")]
+    vectors = [[1.0, invalid_value, 0.0]]
+
+    with pytest.raises(ValueError, match="finite"):
+        store.upsert_chunks(chunks, vectors)
+
+
+@pytest.mark.parametrize("invalid_value", [math.nan, math.inf, -math.inf])
+def test_search_rejects_non_finite_query_values(store, invalid_value):
+    query_vector = [1.0, invalid_value, 0.0]
+
+    with pytest.raises(ValueError, match="finite"):
+        store.search(query_vector)

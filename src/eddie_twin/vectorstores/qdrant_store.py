@@ -2,7 +2,8 @@
 from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
-
+import math
+from numbers import Real
 from qdrant_client import QdrantClient, models
 
 
@@ -63,13 +64,28 @@ class QdrantVectorStore:
             raise ValueError("chunk_id cannot be empty.")
 
         return str(uuid5(NAMESPACE_URL, chunk_id))
-
+    @staticmethod
+    def _validate_finite_vector(vector: list[float], name: str) -> None:
+        """Reject vector elements that are not finite real numbers."""
+        for value in vector:
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, Real)
+                or not math.isfinite(value)
+            ):
+                raise ValueError(
+                    f"{name} must contain only finite real numbers."
+                )
+            
     def upsert_chunks(
         self,
         chunks: list[dict[str, Any]],
         vectors: list[list[float]],
     ) -> int:
         """Store chunks and their embeddings; return the number processed."""
+        for vector in vectors:
+            self._validate_finite_vector(vector, "Vector")
+
         if len(chunks) != len(vectors):
             raise ValueError("Each chunk must have exactly one vector.")
 
@@ -118,6 +134,7 @@ class QdrantVectorStore:
         top_k: int = 5,
     ) -> list[dict[str, Any]]:
         """Return the most similar chunks for a query embedding."""
+        self._validate_finite_vector(query_vector, "Query vector")
         if len(query_vector) != self.vector_size:
             raise ValueError(
                 f"Expected query vector size {self.vector_size}, "
